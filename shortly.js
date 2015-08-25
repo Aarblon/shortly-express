@@ -3,6 +3,7 @@ var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
 var session = require('express-session');
+var cookie = require('cookie-parser');
 
 var db = require('./app/config');
 var Users = require('./app/collections/users');
@@ -13,7 +14,6 @@ var Click = require('./app/models/click');
 
 var app = express();
 var logged = false;
-//logged = authenticator output
 
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
@@ -25,7 +25,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 //a middleware to check if we have a session id
 app.use(function(req, res, next) {
-  logged = util.authenticator(req);
+  logged = util.checkUser(req);
   next();
 });
 
@@ -94,18 +94,17 @@ function(req, res) {
 app.post('/signup', function(req, res) {
   var username = req.body.username;
   var password = req.body.password;
-  var salt = salt;
 
   new User({ username: username }).fetch().then(function(found) {
     if (found) {
       res.send(201, "Username already exists, please choose another");
     } else {
       //user doesn't exist yet
-      var hashed = util.hashPassword(password, salt);
+      var hashed = util.hashPassword(password);
 
-      var user = new Users({
+      var user = new User({
         username: username,
-        password: hashed,
+        password: hashed
       });
 
       user.save().then(function(newUser) {
@@ -116,9 +115,14 @@ app.post('/signup', function(req, res) {
       })
       .then(function(newUser) {
         console.log('newUser inside second promise: ', newUser);
-        res.end(201, 'user signed up');
-        //log in the newly created user
-        //req.session.loggedin
+        app.use(cookie())
+        //create models for sessions table
+          //we need to access model table at some point
+          //ideally, after we
+
+          //send index
+          //hypothetical replacement for logged boolean
+          //req.cookie.sessionid
       })
     }
   })
