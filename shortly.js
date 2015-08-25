@@ -1,5 +1,6 @@
 var express = require('express');
-var util = require('./lib/utility');
+var Promise = require('bluebird');
+var util = require('./lib/utility.js');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
 var session = require('express-session');
@@ -30,8 +31,6 @@ app.use(function(req, res, next) {
 });
 
 app.get('/',
-  //perform some check on sessionid to see if exists
-  //if it exists, render index
 function(req, res) {
   console.log('req.body: ', req.body);
   console.log('session id: ', req.sessionID)
@@ -41,8 +40,6 @@ function(req, res) {
   } else {
     res.render('login');
   }
-  //else render login page
-  //where do we store the sessionids??
 });
 
 app.get('/create',
@@ -107,6 +104,7 @@ app.post('/signup', function(req, res) {
         password: hashed
       });
 
+
       user.save().then(function(newUser) {
         console.log('The user we just saved: ', user);
         console.log('newUser inside first promise: ', newUser);
@@ -114,19 +112,29 @@ app.post('/signup', function(req, res) {
         return newUser;
       })
       .then(function(newUser) {
-        console.log('newUser inside second promise: ', newUser);
-        app.use(cookie())
-        //create models for sessions table
-          //we need to access model table at some point
-          //ideally, after we
+        var sessionHash = util.sessionHasher(newUser)
+        //find the userid based off of our username
+        console.log('should equal result: ', sessionHash)
+        db.knex('users').where('username', user.attributes.username).select('id').then(function(userid) {
+          console.log('//////////////////////////////////////////////////////////////////////////////////////////');
+          console.log('testing to see what our query is returning: ', userid)
+            //take the result of the user_id insert that with the session id in the sessions table
+          // db.knex('sessions').insert({session_id: sessionHash, user_id: userid[0].user_id})
+          db.knex.raw('INSERT INTO sessions (session_id, user_id) VALUES (?, ?)', sessionHash, userid[0].user_id)
+        }).then(function() {
+            console.log('final promise, testing sessionHash: ', sessionHash);
+            res.send('index');
+            //set the cookie
+            //render the index page
+        });
 
-          //send index
+        // app.use(cookie())
           //hypothetical replacement for logged boolean
           //req.cookie.sessionid
       })
     }
   })
-})
+});
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
